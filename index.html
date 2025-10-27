@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KENOS by ig0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* Strict black background and Inter font for the whole body */
+        body {
+            background-color: black;
+            font-family: 'Inter', sans-serif;
+            color: white; /* Default text color is white */
+            overflow: hidden; /* Hide potential scrollbars from snow */
+        }
+
+        /* --- Snow Effect CSS --- */
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            background-color: white;
+            border-radius: 50%;
+            pointer-events: none;
+            /* Animation keyframes defined below */
+            animation-timing-function: linear; /* Constant speed */
+            animation-iteration-count: infinite; /* Loop endlessly */
+        }
+
+        /* New fall-left animation (diagonal) */
+        @keyframes fall-left {
+            0% {
+                transform: translate(0, 0); /* Start at original x, 0y */
+                opacity: 0.8;
+            }
+            50% {
+                opacity: 0.9;
+            }
+            100% {
+                transform: translate(-10vw, 100vh); /* Moves 10vw left, 100vh down */
+                opacity: 0.7;
+            }
+        }
+
+        /* Styling for the password card to maintain the B&W theme */
+        .password-card {
+            background-color: rgba(0, 0, 0, 0.7); /* Slightly transparent black */
+            border: 1px solid white;
+        }
+
+        .input-field {
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+        }
+        .submit-button {
+            background-color: white;
+            color: black;
+            border: 1px solid white;
+        }
+
+        /* Main container is full screen */
+        #main-content {
+            height: 100vh;
+            display: none; /* Initially hidden */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="snow-container" class="absolute inset-0 z-0"></div>
+
+    <div id="auth-overlay" class="fixed inset-0 flex items-center justify-center z-10 p-4">
+        <div class="password-card max-w-sm w-full p-8 rounded-lg shadow-2xl space-y-6">
+            <h1 class="text-3xl font-bold text-white text-center tracking-wider">KENOS ACCESS</h1>
+            <p class="text-sm text-gray-200 text-center">Enter Access Code to proceed.</p>
+            
+            <input 
+                type="password" 
+                id="password-input" 
+                placeholder="Access Code" 
+                class="input-field w-full p-3 rounded-md focus:ring-1 focus:ring-white focus:outline-none transition"
+            >
+            <button 
+                id="submit-button" 
+                onclick="checkPassword()" 
+                class="submit-button w-full p-3 rounded-md font-semibold hover:bg-gray-100 transition duration-200"
+            >
+                ENTER
+            </button>
+            
+            <p id="error-message" class="text-sm text-white text-center hidden pt-2">Invalid code.</p>
+        </div>
+    </div>
+
+    <div id="main-content" class="flex flex-col items-center justify-center pt-20">
+        <h1 class="text-6xl font-extrabold tracking-widest uppercase mb-4">KENOS PROXX</h1>
+        <p class="text-sm text-gray-400 mb-6 uppercase tracking-widest font-semibold">by ig0</p>
+        
+        <p class="text-xl text-center max-w-xl text-gray-200 mb-6">Enter a URL to browse securely via the PROXX service.</p>
+        
+        <div class="w-full max-w-lg p-6 border border-white rounded-lg space-y-4">
+            <input 
+                type="text" 
+                id="proxy-input" 
+                placeholder="e.g., https://example.com or example.com" 
+                class="input-field w-full p-4 text-lg rounded-md focus:ring-1 focus:ring-white focus:outline-none transition"
+                onkeypress="if(event.key === 'Enter') browseProxy()"
+            >
+            <button 
+                id="proxy-button" 
+                onclick="browseProxy()" 
+                class="submit-button w-full p-4 text-lg rounded-md font-semibold hover:bg-gray-100 transition duration-200"
+            >
+                BROWSE
+            </button>
+            <p id="proxy-error" class="text-sm text-white text-center hidden"></p>
+        </div>
+
+        <p class="mt-8 text-xs text-gray-400 max-w-xl text-center">
+            Note: The client-side interface redirects to a Worker URL which must be configured separately.
+        </p>
+    </div>
+
+    <script>
+        const CORRECT_PASSWORD = 'qq901';
+        const snowContainer = document.getElementById('snow-container');
+        const authOverlay = document.getElementById('auth-overlay');
+        const mainContent = document.getElementById('main-content');
+        const passwordInput = document.getElementById('password-input');
+        const errorMessage = document.getElementById('error-message');
+
+        // Standard Canvas requirement variables (kept for compatibility)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        /** Checks the entered password and grants access if correct. */
+        function checkPassword() {
+            const enteredPassword = passwordInput.value;
+            if (enteredPassword === CORRECT_PASSWORD) {
+                authOverlay.classList.add('hidden');
+                mainContent.style.display = 'flex';
+                errorMessage.classList.add('hidden');
+            } else {
+                errorMessage.classList.remove('hidden');
+                passwordInput.value = ''; 
+                passwordInput.focus();
+            }
+        }
+        passwordInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                checkPassword();
+            }
+        });
+
+        /** Formats the URL and redirects to the /proxx/ worker path. */
+        function browseProxy() {
+            const input = document.getElementById('proxy-input');
+            const url = input.value.trim();
+            const errorElement = document.getElementById('proxy-error');
+            errorElement.classList.add('hidden');
+            errorElement.textContent = '';
+
+            if (url === "") {
+                errorElement.textContent = 'Please enter a URL.';
+                errorElement.classList.remove('hidden');
+                return;
+            }
+
+            let targetUrl = url;
+
+            // Simple protocol correction
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                targetUrl = 'https://' + targetUrl;
+            }
+            
+            // Encode the URL and redirect to a path the Worker can easily parse (e.g., /proxx/https://google.com)
+            const encodedUrl = encodeURIComponent(targetUrl);
+            // This redirect path MUST match the route you set up on Cloudflare (e.g., yourdomain.com/proxx/*)
+            window.location.href = `/proxx/${encodedUrl}`;
+        }
+
+
+        // --- Snow Effect Initialization ---
+
+        /**
+         * Creates a single snowflake with randomized size, speed, and position.
+         */
+        function createSnowflake() {
+            const snowflake = document.createElement('div');
+            snowflake.classList.add('snowflake');
+
+            // Random initial horizontal position
+            snowflake.style.left = Math.random() * window.innerWidth + 'px';
+            
+            // Random opacity for a subtle, varied look
+            snowflake.style.opacity = 0.5 + Math.random() * 0.5; 
+            
+            // Medium size (4px to 7px)
+            const size = (4 + Math.random() * 3); 
+            snowflake.style.width = size + 'px';
+            snowflake.style.height = size + 'px';
+
+            // Random fall time (speed) and pre-delay for a continuous start
+            snowflake.style.animationDuration = (8 + Math.random() * 7) + 's'; // 8s to 15s fall time
+            snowflake.style.animationDelay = -Math.random() * 10 + 's'; // Start off-screen
+
+            // Apply the new 'fall-left' animation
+            snowflake.style.animationName = 'fall-left'; 
+
+            // Add the flake to the container
+            snowContainer.appendChild(snowflake);
+
+            // Clean up the flake once it falls off-screen to prevent memory leak
+            snowflake.addEventListener('animationend', () => { 
+                snowflake.remove(); 
+                createSnowflake();
+            });
+        }
+
+        /**
+         * Initializes the snow effect by creating a set number of snowflakes.
+         */
+        function initSnow() {
+            const flakeCount = 100; // Increased density 
+            for (let i = 0; i < flakeCount; i++) {
+                createSnowflake();
+            }
+        }
+
+        // Ensure the snow starts when the page loads
+        window.onload = function () {
+            initSnow();
+        }
+
+        // Simple cleanup on resize (optional, but handles landscape orientation changes better)
+        window.addEventListener('resize', () => {
+            // Clear all existing flakes
+            snowContainer.innerHTML = '';
+            // Re-initialize snow with new window dimensions
+            initSnow();
+        });
+    </script>
+</body>
+</html>

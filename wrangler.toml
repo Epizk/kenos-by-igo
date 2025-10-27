@@ -1,0 +1,4 @@
+# Project name and owner for organizational purposes
+name = "kenos-proxx-worker"
+main = "src/worker.js"
+compatibility_date = "2025-10-27"
