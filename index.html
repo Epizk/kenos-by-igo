@@ -3,66 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KENOS by ig0</title>
+    <title>KENOS PROXX by ig0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
     <style>
-        /* Strict black background and Inter font for the whole body */
+        /* BASE STYLES & FONT */
         body {
             background-color: black;
             font-family: 'Inter', sans-serif;
-            color: white; /* Default text color is white */
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
             overflow: hidden; /* Hide potential scrollbars from snow */
         }
 
-        /* --- Snow Effect CSS --- */
-        .snowflake {
-            position: absolute;
-            top: -10px;
-            background-color: white;
-            border-radius: 50%;
-            pointer-events: none;
-            /* Animation keyframes defined below */
-            animation-timing-function: linear; /* Constant speed */
-            animation-iteration-count: infinite; /* Loop endlessly */
-        }
-
-        /* New fall-left animation (diagonal) */
-        @keyframes fall-left {
-            0% {
-                transform: translate(0, 0); /* Start at original x, 0y */
-                opacity: 0.8;
-            }
-            50% {
-                opacity: 0.9;
-            }
-            100% {
-                transform: translate(-10vw, 100vh); /* Moves 10vw left, 100vh down */
-                opacity: 0.7;
-            }
-        }
-
-        /* Styling for the password card to maintain the B&W theme */
+        /* --- Custom B&W Theme Components (from your old file) --- */
         .password-card {
-            background-color: rgba(0, 0, 0, 0.7); /* Slightly transparent black */
+            background-color: rgba(0, 0, 0, 0.8); /* Slightly transparent black */
             border: 1px solid white;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.1);
         }
 
         .input-field {
             background-color: black;
             color: white;
             border: 1px solid white;
+            transition: border-color 0.2s;
         }
+        .input-field:focus {
+            border-color: #5267ff; /* Highlight color */
+            outline: none;
+        }
+
         .submit-button {
             background-color: white;
             color: black;
             border: 1px solid white;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .submit-button:hover {
+            background-color: #ccc;
+        }
+        .submit-button:active {
+            transform: scale(0.98);
+        }
+        .submit-button-icon {
+            background-color: black;
+            color: white;
+            border: 1px solid white;
+            padding: 0.75rem 1.5rem;
         }
 
-        /* Main container is full screen */
+        /* --- Snow Effect CSS (from your old file) --- */
+        .snowflake {
+            position: absolute;
+            top: -10px;
+            background-color: white;
+            border-radius: 50%;
+            pointer-events: none;
+            animation-timing-function: linear;
+            animation-iteration-count: infinite;
+            z-index: 1;
+        }
+
+        @keyframes fall-left {
+            0% { transform: translate(0, 0); opacity: 0.8; }
+            50% { opacity: 0.9; }
+            100% { transform: translate(-10vw, 100vh); opacity: 0.7; }
+        }
+
+        /* --- NEW PROXY AND FULLSCREEN STYLES --- */
         #main-content {
             height: 100vh;
+            width: 100%;
+            max-width: 900px; /* Constrain the header width */
+            padding: 1rem;
             display: none; /* Initially hidden */
+            z-index: 10;
+        }
+
+        #proxyFrame {
+            width: 100%;
+            height: 80vh; /* Default height for the iframe */
+            border: 1px solid white; /* B&W border for the iframe */
+            border-radius: 8px;
+            background-color: #000;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        /* Fullscreen styles */
+        .fullscreen-active #proxyFrame {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            margin: 0;
+            border-radius: 0;
+            border: none;
+        }
+        .fullscreen-active #main-content {
+            display: none; /* Hide the top UI when fullscreen */
         }
     </style>
 </head>
@@ -70,7 +117,8 @@
 
     <div id="snow-container" class="absolute inset-0 z-0"></div>
 
-    <div id="auth-overlay" class="fixed inset-0 flex items-center justify-center z-10 p-4">
+    <!-- Authentication Screen -->
+    <div id="auth-overlay" class="fixed inset-0 flex items-center justify-center z-20 p-4">
         <div class="password-card max-w-sm w-full p-8 rounded-lg shadow-2xl space-y-6">
             <h1 class="text-3xl font-bold text-white text-center tracking-wider">KENOS ACCESS</h1>
             <p class="text-sm text-gray-200 text-center">Enter Access Code to proceed.</p>
@@ -93,33 +141,48 @@
         </div>
     </div>
 
-    <div id="main-content" class="flex flex-col items-center justify-center pt-20">
-        <h1 class="text-6xl font-extrabold tracking-widest uppercase mb-4">KENOS PROXX</h1>
-        <p class="text-sm text-gray-400 mb-6 uppercase tracking-widest font-semibold">by ig0</p>
+    <!-- Main Application UI (Now contains the proxy input and the iframe) -->
+    <div id="main-content" class="flex flex-col mx-auto px-4">
         
-        <p class="text-xl text-center max-w-xl text-gray-200 mb-6">Enter a URL to browse securely via the PROXX service.</p>
-        
-        <div class="w-full max-w-lg p-6 border border-white rounded-lg space-y-4">
-            <input 
-                type="text" 
-                id="proxy-input" 
-                placeholder="e.g., https://example.com or example.com" 
-                class="input-field w-full p-4 text-lg rounded-md focus:ring-1 focus:ring-white focus:outline-none transition"
-                onkeypress="if(event.key === 'Enter') browseProxy()"
-            >
-            <button 
-                id="proxy-button" 
-                onclick="browseProxy()" 
-                class="submit-button w-full p-4 text-lg rounded-md font-semibold hover:bg-gray-100 transition duration-200"
-            >
-                BROWSE
-            </button>
-            <p id="proxy-error" class="text-sm text-white text-center hidden"></p>
+        <!-- Header and Input Card -->
+        <div class="pt-8 mb-4 flex flex-col items-center">
+             <h1 class="text-5xl font-extrabold tracking-widest uppercase mb-2">KENOS PROXX</h1>
+             <p class="text-sm text-gray-400 mb-6 uppercase tracking-widest font-semibold">by ig0</p>
+            
+             <div class="w-full max-w-lg p-3 password-card rounded-lg flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-3">
+                <input 
+                    type="text" 
+                    id="proxy-input" 
+                    placeholder="e.g., https://example.com" 
+                    class="input-field flex-grow p-3 text-base rounded-md"
+                    onkeypress="if(event.key === 'Enter') browseProxy()"
+                >
+                <button 
+                    id="proxy-button" 
+                    onclick="browseProxy()" 
+                    class="submit-button w-full md:w-auto p-3 text-base rounded-md font-semibold hover:bg-gray-100 transition duration-200"
+                >
+                    BROWSE
+                </button>
+                <button 
+                    onclick="toggleFullscreen()" 
+                    id="fullscreen-button" 
+                    title="Toggle Fullscreen"
+                    class="submit-button-icon w-10 h-10 flex items-center justify-center rounded-md font-semibold hover:bg-gray-100 transition duration-200"
+                >
+                    <!-- Lucide Fullscreen Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                </button>
+            </div>
+            <p id="proxy-error" class="text-sm text-white text-center hidden mt-2"></p>
         </div>
 
-        <p class="mt-8 text-xs text-gray-400 max-w-xl text-center">
-            Note: The client-side interface redirects to a Worker URL which must be configured separately.
-        </p>
+        <!-- Iframe Container for Proxied Content -->
+        <iframe 
+            id="proxyFrame" 
+            name="proxyFrame" 
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-modals allow-pointer-lock allow-orientation-lock allow-presentation"
+        ></iframe>
     </div>
 
     <script>
@@ -129,32 +192,32 @@
         const mainContent = document.getElementById('main-content');
         const passwordInput = document.getElementById('password-input');
         const errorMessage = document.getElementById('error-message');
+        const iframe = document.getElementById('proxyFrame');
+        const body = document.body;
 
-        // Standard Canvas requirement variables (kept for compatibility)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        // --- AUTHENTICATION LOGIC ---
 
-        /** Checks the entered password and grants access if correct. */
         function checkPassword() {
             const enteredPassword = passwordInput.value;
             if (enteredPassword === CORRECT_PASSWORD) {
                 authOverlay.classList.add('hidden');
-                mainContent.style.display = 'flex';
+                mainContent.style.display = 'flex'; // Show the main UI
                 errorMessage.classList.add('hidden');
             } else {
                 errorMessage.classList.remove('hidden');
-                passwordInput.value = ''; 
+                passwordInput.value = '';
                 passwordInput.focus();
             }
         }
+        
         passwordInput.addEventListener('keypress', function(event) {
             if (event.key === 'Enter') {
                 checkPassword();
             }
         });
 
-        /** Formats the URL and redirects to the /proxx/ worker path. */
+        // --- PROXY BROWSING LOGIC (Now uses IFRAME) ---
+
         function browseProxy() {
             const input = document.getElementById('proxy-input');
             const url = input.value.trim();
@@ -175,55 +238,76 @@
                 targetUrl = 'https://' + targetUrl;
             }
             
-            // Encode the URL and redirect to a path the Worker can easily parse (e.g., /proxx/https://google.com)
+            // Encode the URL and construct the worker path expected by Cloudflare Pages routing
             const encodedUrl = encodeURIComponent(targetUrl);
-            // This redirect path MUST match the route you set up on Cloudflare (e.g., yourdomain.com/proxx/*)
-            window.location.href = `/proxx/${encodedUrl}`;
+            
+            // This path MUST match the route you set up on Cloudflare (e.g., yourdomain.com/proxx/*)
+            const proxyUrl = window.location.origin + `/proxx/${encodedUrl}`;
+
+            // Load the result into the iframe instead of redirecting the whole window
+            iframe.src = proxyUrl;
         }
 
+        // --- FULLSCREEN LOGIC (NEW) ---
 
-        // --- Snow Effect Initialization ---
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                // Request fullscreen on the entire body
+                body.requestFullscreen().catch(err => {
+                    console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                    // Fallback message box
+                    const messageBox = document.createElement('div');
+                    messageBox.style.cssText = 'position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:red; color:white; padding:15px; border-radius:8px; z-index:10000;';
+                    messageBox.textContent = 'Fullscreen failed. Browser security settings may block it.';
+                    document.body.appendChild(messageBox);
+                    setTimeout(() => messageBox.remove(), 3000);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
 
-        /**
-         * Creates a single snowflake with randomized size, speed, and position.
-         */
+        // Update body class when fullscreen state changes
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                body.classList.add('fullscreen-active');
+            } else {
+                body.classList.remove('fullscreen-active');
+            }
+        });
+
+
+        // --- Snow Effect Initialization (from your old file) ---
+
+        /** Creates a single snowflake with randomized properties. */
         function createSnowflake() {
             const snowflake = document.createElement('div');
             snowflake.classList.add('snowflake');
 
-            // Random initial horizontal position
             snowflake.style.left = Math.random() * window.innerWidth + 'px';
+            snowflake.style.opacity = 0.5 + Math.random() * 0.5;
             
-            // Random opacity for a subtle, varied look
-            snowflake.style.opacity = 0.5 + Math.random() * 0.5; 
-            
-            // Medium size (4px to 7px)
-            const size = (4 + Math.random() * 3); 
+            const size = (4 + Math.random() * 3);
             snowflake.style.width = size + 'px';
             snowflake.style.height = size + 'px';
 
-            // Random fall time (speed) and pre-delay for a continuous start
             snowflake.style.animationDuration = (8 + Math.random() * 7) + 's'; // 8s to 15s fall time
             snowflake.style.animationDelay = -Math.random() * 10 + 's'; // Start off-screen
 
-            // Apply the new 'fall-left' animation
-            snowflake.style.animationName = 'fall-left'; 
-
-            // Add the flake to the container
+            snowflake.style.animationName = 'fall-left';
+            
             snowContainer.appendChild(snowflake);
 
-            // Clean up the flake once it falls off-screen to prevent memory leak
+            // Clean up and re-create the flake once it falls off-screen
             snowflake.addEventListener('animationend', () => { 
                 snowflake.remove(); 
                 createSnowflake();
             });
         }
 
-        /**
-         * Initializes the snow effect by creating a set number of snowflakes.
-         */
+        /** Initializes the snow effect. */
         function initSnow() {
-            const flakeCount = 100; // Increased density 
+            const flakeCount = 100;
             for (let i = 0; i < flakeCount; i++) {
                 createSnowflake();
             }
@@ -236,9 +320,7 @@
 
         // Simple cleanup on resize (optional, but handles landscape orientation changes better)
         window.addEventListener('resize', () => {
-            // Clear all existing flakes
             snowContainer.innerHTML = '';
-            // Re-initialize snow with new window dimensions
             initSnow();
         });
     </script>

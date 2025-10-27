@@ -1,7 +1,9 @@
 /**
  * Worker-Side JavaScript for a basic Web PROXX Service.
- * This file is meant to be deployed as a Cloudflare Worker. It handles routing
- * and content fetching for URLs passed through the /proxx/ path.
+ * * NOTE: This Worker is now expected to be called via a Pages Service Binding 
+ * (like 'PROXX_WORKER') and will only receive the URL path (e.g., /https%3A%2F%2Fexample.com)
+ *
+ * This file should be deployed as a Cloudflare Worker named 'kenos-proxx-worker'.
  */
 
 // Listener for all incoming fetch events
@@ -14,7 +16,7 @@ addEventListener('fetch', event => {
  * @param {string} hostname The hostname of the deployed site.
  * @returns {Response} An HTML response telling the user to go to the root.
  */
-function createRootResponse(hostname) {
+function createRootResponse() {
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
@@ -32,9 +34,8 @@ function createRootResponse(hostname) {
         <div class="card">
             <h1 class="text-3xl font-bold mb-4">KENOS PROXX Service Root</h1>
             <p class="text-sm text-gray-400 mb-6 uppercase tracking-widest font-semibold">by ig0</p>
-            <p class="mb-6">This path is for worker routing only.</p>
-            <p>Please return to the main homepage to use the PROXX application.</p>
-            <a href="https://${hostname}/" class="mt-4 inline-block bg-white text-black font-semibold py-2 px-4 rounded hover:bg-gray-200 transition">Go to Homepage</a>
+            <p class="mb-6">This path is for worker routing only. When accessed directly, it cannot parse a URL.</p>
+            <p>Please use the main Pages URL to enter your target site.</p>
         </div>
     </body>
     </html>
@@ -53,17 +54,17 @@ function createRootResponse(hostname) {
 async function handleRequest(request) {
   const url = new URL(request.url);
   
-  // Example path extraction: Assume the URL is like https://yourdomain.com/proxx/https%3A%2F%2Fexample.com
-  const proxyPrefix = '/proxx/';
-  const urlStartIndex = url.pathname.indexOf(proxyPrefix);
+  // When using a binding, the path starts with the encoded URL, not /proxx/.
+  // Example path: /https%3A%2F%2Fexample.com
+  const path = url.pathname;
   
-  // If the path doesn't contain the expected prefix, return the HTML root response
-  if (urlStartIndex === -1) {
-    return createRootResponse(url.hostname);
+  // We expect the path to start with '/' followed by the encoded URL.
+  if (path.length <= 1) {
+    return createRootResponse();
   }
-
-  // Extract the encoded target URL and decode it
-  const encodedTargetUrl = url.pathname.substring(urlStartIndex + proxyPrefix.length);
+  
+  // The encoded target URL is everything after the first slash.
+  const encodedTargetUrl = path.substring(1); 
   let targetUrl;
 
   try {
@@ -72,8 +73,9 @@ async function handleRequest(request) {
     return new Response('Invalid URL encoding.', { status: 400 });
   }
 
+  // Basic validation
   if (!targetUrl || (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://'))) {
-      return new Response('Invalid target URL format.', { status: 400 });
+      return new Response('Invalid target URL format. Must start with http:// or https://', { status: 400 });
   }
   
   // Create a new request object to send to the target URL.
@@ -94,6 +96,9 @@ async function handleRequest(request) {
     // Stripping common security headers that prevent embedding/iframing
     newResponse.headers.delete('content-security-policy');
     newResponse.headers.delete('x-frame-options'); 
+    
+    // Optional: Add a CORS header to help scripts if needed
+    newResponse.headers.set('Access-Control-Allow-Origin', '*');
 
     return newResponse;
 
